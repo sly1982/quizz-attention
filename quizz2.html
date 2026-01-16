@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quiz – Émotion positive durable</title>
+
+  <style>
+    :root{
+      --bg:#05050a;
+      --card:rgba(10,10,18,.62);
+      --border:rgba(255,255,255,.14);
+      --text:rgba(255,255,255,.94);
+      --muted:rgba(255,255,255,.78);
+      --accent:#b44cff;
+      --accent2:#7a2cff;
+      --danger:#ff3b3b;
+      --ok:#22d38a;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      overflow:hidden;
+    }
+
+    #matrix{position:fixed;inset:0;z-index:0}
+    .overlay{
+      position:fixed;inset:0;
+      background:radial-gradient(rgba(0,0,0,.35),rgba(0,0,0,.75));
+      z-index:1
+    }
+
+    .wrap{
+      position:relative;z-index:2;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+    }
+
+    .card{
+      width:min(520px,92vw);
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:18px 16px;
+      backdrop-filter:blur(10px);
+    }
+
+    h1{
+      margin:0 0 12px;
+      font-size:18px;
+      line-height:1.35;
+    }
+
+    .options{display:grid;gap:10px}
+
+    .option{
+      display:flex;gap:10px;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      cursor:pointer;
+    }
+
+    .option input{accent-color:var(--accent)}
+
+    .actions{
+      display:flex;gap:10px;margin-top:14px;flex-wrap:wrap
+    }
+
+    button{
+      border:0;border-radius:12px;
+      padding:12px 14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .primary{
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#0b0612;
+    }
+
+    .ghost{
+      background:rgba(255,255,255,.08);
+      color:var(--text);
+      border:1px solid var(--border);
+    }
+
+    .feedback{
+      display:none;
+      margin-top:14px;
+      padding:12px;
+      border-radius:14px;
+      background:rgba(0,0,0,.25);
+      border:1px dashed var(--border);
+    }
+
+    .good{color:var(--ok);font-weight:800}
+    .bad{color:var(--danger);font-weight:800}
+
+    .why{
+      margin-top:8px;
+      padding:10px;
+      border-radius:12px;
+      background:rgba(180,76,255,.08);
+      border:1px solid rgba(180,76,255,.3);
+      display:none;
+    }
+
+    .fade{animation:fade .2s ease}
+    @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+  </style>
+</head>
+
+<body>
+<canvas id="matrix"></canvas>
+<div class="overlay"></div>
+
+<div class="wrap">
+  <div class="card">
+    <h1>Quelle situation a le plus de chances de générer une émotion positive durable chez un hôte ?</h1>
+
+    <form id="quiz">
+      <div class="options">
+        <label class="option"><input type="radio" name="q" value="A"> A. Appliquer strictement une procédure de service</label>
+        <label class="option"><input type="radio" name="q" value="B"> B. Résoudre un problème rapidement, sans interaction humaine</label>
+        <label class="option"><input type="radio" name="q" value="C"> C. Personnaliser la réponse selon le contexte émotionnel</label>
+        <label class="option"><input type="radio" name="q" value="D"> D. Offrir une compensation financière standard</label>
+      </div>
+
+      <div class="actions">
+        <button class="primary" type="submit">Valider</button>
+        <button class="ghost" type="button" id="reset">Réinitialiser</button>
+      </div>
+
+      <div class="feedback fade" id="feedback">
+        <div id="result"></div>
+        <div class="why" id="why">
+          L’émotion naît de la reconnaissance humaine, pas de la simple efficacité opérationnelle.
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* QUIZ LOGIC */
+const quiz = document.getElementById("quiz");
+const feedback = document.getElementById("feedback");
+const result = document.getElementById("result");
+const why = document.getElementById("why");
+const reset = document.getElementById("reset");
+
+quiz.addEventListener("submit", e => {
+  e.preventDefault();
+  const checked = quiz.querySelector("input[name=q]:checked");
+
+  feedback.style.display = "block";
+  why.style.display = "none";
+
+  if (!checked){
+    result.innerHTML = "<span class='bad'>Veuillez sélectionner une réponse.</span>";
+    return;
+  }
+
+  if (checked.value === "C"){
+    result.innerHTML = "<span class='good'>✅ Bonne réponse.</span>";
+    why.style.display = "block";
+  } else {
+    result.innerHTML = "<span class='bad'>Mauvaise réponse.</span>";
+  }
+});
+
+reset.addEventListener("click", () => {
+  quiz.reset();
+  feedback.style.display = "none";
+  why.style.display = "none";
+});
+
+/* MATRIX PURPLE BACKGROUND */
+const c = document.getElementById("matrix");
+const ctx = c.getContext("2d");
+const chars = "01ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*";
+let font = 16, drops=[];
+
+function resize(){
+  c.width = innerWidth;
+  c.height = innerHeight;
+  drops = Array(Math.floor(c.width/font)).fill(1);
+}
+resize();
+window.onresize = resize;
+
+function draw(){
+  ctx.fillStyle="rgba(5,5,10,.12)";
+  ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle="#b44cff";
+  ctx.font=font+"px monospace";
+  drops.forEach((y,i)=>{
+    const text = chars[Math.random()*chars.length|0];
+    ctx.fillText(text,i*font,y*font);
+    drops[i] = y*font > c.height && Math.random()>0.975 ? 0 : y+1;
+  });
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
